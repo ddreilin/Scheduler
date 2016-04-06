@@ -24,11 +24,11 @@ void priqueue_init(priqueue_t *q, int(*comparer)(const void *, const void *))
   q->comparer = comparer;
 }
 
-node_t * node_init( void *ptr )
+struct node_t * node_init( void *ptr )
 {
-  node_t *n = malloc(sizeof(node_t));
+  struct node_t* n = malloc(sizeof(node_t));
   n->value = *(int*)ptr;
-  n->next = NULL;
+  n->next = *(struct node_t*)NULL;
   return n;
 }
 
@@ -43,8 +43,8 @@ node_t * node_init( void *ptr )
 int priqueue_offer(priqueue_t *q, void *ptr)
 {
   int index = 0;
-  node_t *temp_node = q->head;
-  node_t *prev_temp = NULL;
+  struct node_t *temp_node = q->head;
+  struct node_t *prev_temp = NULL;
   while(temp_node != NULL){
 
     //found spot in queue
@@ -95,11 +95,7 @@ void *priqueue_peek(priqueue_t *q)
   if(q->head == NULL){
     return NULL;
   }
-
-  //return the value of the head.
-  else{
-    return q->head->value;
-  }
+  return q->head->value;
 }
 
 
@@ -120,7 +116,7 @@ void *priqueue_poll(priqueue_t *q)
 
   //return the head and remove it from the queue
   else{
-    node_t prev_head = q->head;
+    struct node_t* prev_head = q->head;
     q->head = q->head->next;
     q->length = q->length - 1;
     return prev_head;
@@ -140,12 +136,12 @@ void *priqueue_poll(priqueue_t *q)
 void *priqueue_at(priqueue_t *q, int index)
 {
   //index is not in queue
-  if(index > (q->length -1){
+  if(index > (q->length -1)){
     return NULL;
   }
 
   else{
-    node_t temp_node = q->head;
+    struct node_t* temp_node = q->head;
     int loops = 0;
 
     //loops until temp_node contains the index-th node.
@@ -177,7 +173,7 @@ int priqueue_remove(priqueue_t *q, void *ptr)
   if(q->head->value == ptr){
 
     while(q->head->value == ptr){
-      node_t temp_node = q->head;
+      struct node_t* temp_node = q->head;
       q->head = q->head->next;
       q->length = q->length - 1;
       entries++;
@@ -187,14 +183,14 @@ int priqueue_remove(priqueue_t *q, void *ptr)
 
   //else check down the queue
   else{
-    node_t temp_node = q->head;
-    node_t prev_temp = NULL;
+    struct node_t* temp_node = q->head;
+    struct node_t* prev_temp = NULL;
 
     while(temp_node != NULL){
 
       //if the node is equal and not the head
       if(temp_node->value == ptr){
-        prev_temp->next = temp_node->next
+        prev_temp->next = temp_node->next;
         free(temp_node);
         q->length = q->length - 1;
         entries++;
@@ -223,7 +219,7 @@ void *priqueue_remove_at(priqueue_t *q, int index)
 {
   int value;
   //index is not in queue
-  if(index > (q->length -1){
+  if(index > (q->length -1)){
     return NULL;
   }
 
@@ -236,8 +232,8 @@ void *priqueue_remove_at(priqueue_t *q, int index)
 
     else{
 
-      node_t temp_node = q->head;
-      node_t prev_node = NULL;
+      struct node_t* temp_node = q->head;
+      struct node_t* prev_node = NULL;
       int loops = 0;
 
       //loops until temp_node contains the index-th node.

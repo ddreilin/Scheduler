@@ -9,7 +9,7 @@
 */
 typedef struct _node_t
 {
-  int value;
+  int* value;
   struct node_t* next;
 } node_t;
 
@@ -21,14 +21,14 @@ typedef struct _priqueue_t
 {
   int length;
   int (*comparer) ();
-  node_t* head;
+  struct node_t* head;
 } priqueue_t;
 
 
 
 
 void   priqueue_init     (priqueue_t *q, int(*comparer)(const void *, const void *));
-node_t * node_init       ( void *ptr );
+struct node_t * node_init       ( void *ptr );
 
 int    priqueue_offer    (priqueue_t *q, void *ptr);
 void * priqueue_peek     (priqueue_t *q);
