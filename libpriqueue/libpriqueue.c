@@ -14,7 +14,7 @@
     - You may assume this function will only be called once per instance of priqueue_t
     - You may assume this function will be the first function called using an instance of priqueue_t.
   @param q a pointer to an instance of the priqueue_t data structure
-  @param comparer a function pointer that compares two elements.
+  @param cmp a function pointer that compares two elements.
   See also @ref comparer-page
  */
 void priqueue_init(priqueue_t *q, comparer_t cmp)
@@ -22,7 +22,6 @@ void priqueue_init(priqueue_t *q, comparer_t cmp)
   q->length = 0;
   q->head = NULL;
   q->comparer = cmp;
-
 }
 
 
@@ -130,8 +129,9 @@ void *priqueue_poll(priqueue_t *q)
     struct _node_t* prev_head = q->head;
     q->head = q->head->next;
     q->length = q->length - 1;
-    return prev_head;
-  }}
+    return prev_head->value;
+  }
+}
 
 
 
@@ -161,7 +161,7 @@ void *priqueue_at(priqueue_t *q, int index)
       loops++;
     }
 
-    return (int *)temp_node->value;
+    return temp_node->value;
   }
 }
 
@@ -211,7 +211,8 @@ int priqueue_remove(priqueue_t *q, void *ptr)
 
     }
   }
-  return entries;}
+  return entries;
+}
 
 
 /**
