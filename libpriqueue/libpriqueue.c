@@ -22,6 +22,7 @@ void priqueue_init(priqueue_t *q, comparer_t cmp)
   q->length = 0;
   q->head = NULL;
   q->comparer = cmp;
+
 }
 
 
@@ -104,8 +105,9 @@ void *priqueue_peek(priqueue_t *q)
   if(q->head == NULL){
     return NULL;
   }
-  return (int *)q->head->value;
-}
+
+  return q->head->value;}
+
 
 
 /**
@@ -128,10 +130,9 @@ void *priqueue_poll(priqueue_t *q)
     struct _node_t* prev_head = q->head;
     q->head = q->head->next;
     q->length = q->length - 1;
-    return prev_head->value;
-  }
+    return prev_head;
+  }}
 
-}
 
 
 /**
@@ -210,9 +211,7 @@ int priqueue_remove(priqueue_t *q, void *ptr)
 
     }
   }
-
-  return entries;
-}
+  return entries;}
 
 
 /**
@@ -226,7 +225,7 @@ int priqueue_remove(priqueue_t *q, void *ptr)
  */
 void *priqueue_remove_at(priqueue_t *q, int index)
 {
-  void  *value;
+    void  *value;
     //index is not in queue
     if(index > (q->length -1)){
       return NULL;
@@ -238,7 +237,6 @@ void *priqueue_remove_at(priqueue_t *q, int index)
         value = q->head->value;
         priqueue_poll(q);
       }
-
       else{
 
         struct _node_t* temp_node = q->head;
@@ -251,7 +249,6 @@ void *priqueue_remove_at(priqueue_t *q, int index)
           temp_node = temp_node->next;
           loops++;
         }
-
         value = temp_node->value;
         prev_node->next = temp_node->next;
         q->length = q->length - 1;
@@ -260,7 +257,8 @@ void *priqueue_remove_at(priqueue_t *q, int index)
 
     }
   	return value;
-}
+  }
+
 
 
 /**
@@ -283,5 +281,16 @@ int priqueue_size(priqueue_t *q)
 void priqueue_destroy(priqueue_t *q)
 {
   //please
-  //free(q);
+  struct _node_t *temp_node = q->head;
+  struct _node_t *prev_node = NULL;
+
+  while(temp_node!= NULL){
+    temp_node = temp_node->next;
+    prev_node = temp_node;
+    free(prev_node);
+    q->length--;
+  }
+  q->head = NULL;
+  q->comparer = NULL;
+  q->length--;
 }

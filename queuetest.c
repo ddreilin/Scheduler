@@ -18,6 +18,7 @@ int compare2(const void * a, const void * b)
 
 int main()
 {
+	printf("Hi mom");
 	priqueue_t q, q2;
 
 	priqueue_init(&q, compare1);
