@@ -25,6 +25,7 @@ typedef struct _job_t
   int started;                        //technically bool for if started
   int remaining_time;                 //time left until finished
   int first_call;                     //time it was first put into job queue
+  int last_ran_time;                   //time it was run last
 
   //time statistics
   int waiting_time, turnaround_time, response_time;
@@ -84,6 +85,11 @@ int ppri_compare(const void * a, const void * b)
   }
 }
 
+int rr_compare(const void *a, const void * b)
+{
+  return ( ((job_t*)a)->last_ran_time - ((job_t*)b)->last_ran_time );
+}
+
 
 //global scheduler variable
 scheduler_t *s;
@@ -137,6 +143,8 @@ void scheduler_start_up(int cores, scheme_t scheme)
     }
     else if(s->scheme == PPRI){
       priqueue_init( &s->q, ppri_compare);
+    }else if(s->scheme == RR){
+      priqueue_init( &s->q, rr_compare);
     }
 
 }
@@ -177,6 +185,7 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
   new_job->response_time = 0;
   new_job->core = -1;
   new_job->started = 0;
+  new_job->last_ran_time = time;
 
   //sees if there is an idle core
   for(int i = 0; i < s->cores; i++){
@@ -197,31 +206,33 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
     int index;
     int remaining = 0;
 
-    printf("HI MOM!\n");
     //find the longest currently running remaining time
     for(int i = 0; i < priqueue_size(&s->q); i++){
+
       //if currently running
       if(((job_t *)priqueue_at(&s->q, i))->core != -1){
+
         //if the current time remaning is newest remaining
         if( (((job_t *)priqueue_at(&s->q, i))->remaining_time -  (time - ((job_t *)priqueue_at(&s->q, i))->arrival_time ) )> remaining){
           remaining = ((job_t *)priqueue_at(&s->q, i))->remaining_time -  (time - ((job_t *)priqueue_at(&s->q, i))->arrival_time );
           ((job_t *)priqueue_at(&s->q, i))->remaining_time = remaining;
           index = i;
         }
+
       }
     }
 
-    printf("%d\n", remaining);
     //if new job will finish sooner
     if( new_job->remaining_time < remaining ){
-      printf("HI DAD!\n");
       new_job->core = ((job_t *)priqueue_at(&s->q, index))->core;
       new_job->started = 1;
+
 
       if(((job_t *)priqueue_at(&s->q, index))->remaining_time == ((job_t *)priqueue_at(&s->q, index))->running_time){
         ((job_t *)priqueue_at(&s->q, index))->started = 0;
       }
 
+      //adjust previously running job information
       ((job_t *)priqueue_at(&s->q, index))->core = -1;
       ((job_t *)priqueue_at(&s->q, index))->arrival_time = time;
     }
@@ -233,19 +244,24 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
     int index;
     int lowest_priority = -1;
     for(int i = 0; i < priqueue_size(&s->q); i++){
+
       //if currently running
       if(((job_t *)priqueue_at(&s->q, i))->core != -1){
+
         //if the current time remaning is newest remaining
         if( ((job_t *)priqueue_at(&s->q, i))->priority > lowest_priority){
           lowest_priority = ((job_t *)priqueue_at(&s->q, i))->priority;
           index = i;
         }
+
         else if( ((job_t *)priqueue_at(&s->q, i))->priority == lowest_priority){
           if( ((job_t *)priqueue_at(&s->q, i))->first_call < ((job_t *)priqueue_at(&s->q, index))->first_call )
           lowest_priority = ((job_t *)priqueue_at(&s->q, i))->priority;
           index = i;
         }
+
       }
+
     }
 
     if( new_job->priority < lowest_priority){
@@ -253,10 +269,12 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
       new_job->started = 1;
 
       ((job_t *)priqueue_at(&s->q, index))->remaining_time -= time - ((job_t *)priqueue_at(&s->q, index))->arrival_time;
+
       //technically the job hasn't started
       if(((job_t *)priqueue_at(&s->q, index))->remaining_time == ((job_t *)priqueue_at(&s->q, index))->running_time){
         ((job_t *)priqueue_at(&s->q, index))->started = 0;
       }
+
       ((job_t *)priqueue_at(&s->q, index))->core = -1;
       ((job_t *)priqueue_at(&s->q, index))->arrival_time = time;
     }
@@ -347,7 +365,50 @@ int scheduler_job_finished(int core_id, int job_number, int time)
  */
 int scheduler_quantum_expired(int core_id, int time)
 {
-	return -1;
+  int index = -1;
+  int prev_job_id = -1;
+  job_t* old_job;
+
+  //find the job in the queue and remove it
+  for(int i = 0; i < priqueue_size(&s->q); i++){
+    if( ((job_t *)priqueue_at(&s->q, i))->core == core_id){
+      old_job = (job_t *)priqueue_remove_at(&s->q, i);
+      break;
+    }
+  }
+
+  //update previously running job data
+  old_job->last_ran_time = time;
+  old_job->core = -1;
+  old_job->arrival_time = time;
+  prev_job_id = old_job->number;
+  priqueue_offer(&s->q, old_job);
+
+  //if there is a job waiting, start it
+  for(int i = 0; i < priqueue_size(&s->q); i++){
+
+    //find next job
+    if(((job_t *)priqueue_at(&s->q, i))->core == -1 ) {
+      old_job = (job_t *)priqueue_remove_at(&s->q, i);
+      old_job->core = core_id;
+      old_job->waiting_time += (time - old_job->arrival_time);
+
+      //set response time if first time in core
+      if(old_job->started == 0){
+        old_job->response_time = (time - old_job->first_call );
+        old_job->started = 1;
+      }
+
+      //put back into queue
+      old_job->arrival_time = time;
+      index = old_job->number;
+      priqueue_offer(&s->q, old_job);
+      return index;
+    }
+
+  }
+
+	return index;
 }
 
 
